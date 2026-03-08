@@ -24,17 +24,17 @@ use crate::fft;
 use crate::utils;
 use crate::windows;
 
-/// Extract one directional subband: window × spectrum → IFFT.
+/// Extract one directional subband: window × spectrum × (1/sqrt(POU)).
 fn extract_subband(
     f_hat: &Array2<Complex<f64>>,
     w_arr: &Array2<f64>,
-    pou: &Array2<f64>,
+    inv_sqrt_pou: &Array2<f64>,
     n: usize,
 ) -> Array2<Complex<f64>> {
     let mut subband = Array2::zeros((n, n));
     for i in 0..n {
         for j in 0..n {
-            let w = w_arr[[i, j]] / pou[[i, j]].sqrt();
+            let w = w_arr[[i, j]] * inv_sqrt_pou[[i, j]];
             subband[[i, j]] = f_hat[[i, j]] * w;
         }
     }
@@ -88,20 +88,21 @@ pub fn forward_transform(
     for d in 0..num_detail {
         let scale_idx = d + 1;
         let num_dirs = cfg.directions_at_detail_scale(d);
+        let rad_w = windows::build_radial_window(&radial, scale_idx, num_scales);
 
         // Build direction windows (parallel when feature enabled)
         #[cfg(feature = "parallel")]
         let dirs_windows: Vec<Array2<f64>> = (0..num_dirs)
             .into_par_iter()
             .map(|l| {
-                windows::build_combined_window(&radial, &theta, scale_idx, l, num_dirs, num_scales)
+                windows::build_combined_window(&rad_w, &theta, l, num_dirs)
             })
             .collect();
 
         #[cfg(not(feature = "parallel"))]
         let dirs_windows: Vec<Array2<f64>> = (0..num_dirs)
             .map(|l| {
-                windows::build_combined_window(&radial, &theta, scale_idx, l, num_dirs, num_scales)
+                windows::build_combined_window(&rad_w, &theta, l, num_dirs)
             })
             .collect();
 
@@ -125,8 +126,10 @@ pub fn forward_transform(
         }
     }
 
+    let inv_sqrt_pou = pou.mapv(|v| 1.0 / v.sqrt());
+
     // --- Extract coarse coefficients ---
-    let coarse_spec = extract_subband(&f_hat, &coarse_window, &pou, n);
+    let coarse_spec = extract_subband(&f_hat, &coarse_window, &inv_sqrt_pou, n);
 
     // --- Extract detail coefficients (parallel over directions) ---
     let mut detail_coeffs: Vec<Vec<Array2<Complex<f64>>>> = Vec::with_capacity(num_detail);
@@ -134,20 +137,20 @@ pub fn forward_transform(
         #[cfg(feature = "parallel")]
         let dir_coeffs: Vec<Array2<Complex<f64>>> = scale_windows
             .par_iter()
-            .map(|w_arr| extract_subband(&f_hat, w_arr, &pou, n))
+            .map(|w_arr| extract_subband(&f_hat, w_arr, &inv_sqrt_pou, n))
             .collect();
 
         #[cfg(not(feature = "parallel"))]
         let dir_coeffs: Vec<Array2<Complex<f64>>> = scale_windows
             .iter()
-            .map(|w_arr| extract_subband(&f_hat, w_arr, &pou, n))
+            .map(|w_arr| extract_subband(&f_hat, w_arr, &inv_sqrt_pou, n))
             .collect();
 
         detail_coeffs.push(dir_coeffs);
     }
 
     // --- Extract fine coefficients ---
-    let fine_spec = extract_subband(&f_hat, &fine_window, &pou, n);
+    let fine_spec = extract_subband(&f_hat, &fine_window, &inv_sqrt_pou, n);
 
     Ok(CurveletCoeffs {
         coarse: coarse_spec,

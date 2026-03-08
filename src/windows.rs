@@ -187,17 +187,14 @@ pub fn build_angular_window(theta: &Array2<f64>, dir_idx: usize, num_dirs: usize
 
 /// Build the combined radial × angular window for one subband.
 pub fn build_combined_window(
-    radial: &Array2<f64>,
+    rad_w: &Array2<f64>,
     theta: &Array2<f64>,
-    scale_idx: usize,
     dir_idx: usize,
     num_dirs: usize,
-    num_scales: usize,
 ) -> Array2<f64> {
-    let rad_w = build_radial_window(radial, scale_idx, num_scales);
     let ang_w = build_angular_window(theta, dir_idx, num_dirs);
 
-    let n = radial.nrows();
+    let n = rad_w.nrows();
     let mut combined = Array2::zeros((n, n));
     for i in 0..n {
         for j in 0..n {

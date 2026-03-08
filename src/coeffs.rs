@@ -4,7 +4,7 @@
 //! transform as a hierarchy of 2D arrays using `f64` precision internally.
 
 use ndarray::Array2;
-use num_complex::Complex;
+use num_complex::{Complex, ComplexFloat};
 
 use crate::config::CurveletConfig;
 use crate::error::CurveletError;
@@ -98,7 +98,7 @@ impl CurveletCoeffs {
         for scale in &mut self.detail {
             for subband in scale {
                 for c in subband.iter_mut() {
-                    if c.norm() < threshold {
+                    if c.abs() < threshold {
                         *c = Complex::new(0.0, 0.0);
                     }
                 }
@@ -113,7 +113,7 @@ impl CurveletCoeffs {
         for scale in &mut self.detail {
             for subband in scale {
                 for c in subband.iter_mut() {
-                    let mag = c.norm();
+                    let mag = c.abs();
                     if mag < threshold {
                         *c = Complex::new(0.0, 0.0);
                     } else {

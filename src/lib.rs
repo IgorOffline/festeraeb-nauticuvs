@@ -19,7 +19,7 @@
 //!
 //! ```rust
 //! use ndarray::Array2;
-//! use curvelet::{curvelet_forward, curvelet_inverse};
+//! use nauticuvs::{curvelet_forward, curvelet_inverse};
 //!
 //! let image = Array2::<f32>::zeros((256, 256));
 //! let coeffs = curvelet_forward(&image, 5).unwrap();
@@ -48,7 +48,7 @@
 //!
 //! ```rust
 //! # use ndarray::Array2;
-//! # use curvelet::{curvelet_forward, curvelet_inverse};
+//! # use nauticuvs::{curvelet_forward, curvelet_inverse};
 //! let noisy_image = Array2::<f32>::zeros((128, 128));
 //! let mut coeffs = curvelet_forward(&noisy_image, 4).unwrap();
 //!
@@ -72,7 +72,7 @@
 //!
 //! ```rust
 //! # use ndarray::Array2;
-//! use curvelet::{curvelet_forward_config, curvelet_inverse, CurveletConfig};
+//! use nauticuvs::{curvelet_forward_config, curvelet_inverse, CurveletConfig};
 //!
 //! let config = CurveletConfig::new(5).unwrap()
 //!     .with_finest_directions(64).unwrap();   // 64 directions at finest
@@ -85,7 +85,7 @@
 //! Or specify directions for every detail scale explicitly:
 //!
 //! ```rust
-//! # use curvelet::CurveletConfig;
+//! # use nauticuvs::CurveletConfig;
 //! let config = CurveletConfig::new(5).unwrap()
 //!     .with_directions_per_scale(vec![8, 16, 32]).unwrap();
 //! // 3 detail scales: 8, 16, 32 directions respectively
@@ -98,7 +98,7 @@
 //!
 //! ```rust
 //! # use ndarray::Array2;
-//! # use curvelet::{curvelet_forward, curvelet_inverse};
+//! # use nauticuvs::{curvelet_forward, curvelet_inverse};
 //! let image_a = Array2::<f32>::zeros((128, 128));
 //! let image_b = Array2::<f32>::zeros((128, 128));
 //!
@@ -126,7 +126,7 @@
 //!
 //! ```rust
 //! # use ndarray::Array2;
-//! # use curvelet::{curvelet_forward, curvelet_inverse};
+//! # use nauticuvs::{curvelet_forward, curvelet_inverse};
 //! # let red = Array2::<f32>::zeros((64, 64));
 //! # let green = Array2::<f32>::zeros((64, 64));
 //! # let blue = Array2::<f32>::zeros((64, 64));
@@ -172,7 +172,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! curvelet = { version = "0.1", features = ["parallel"] }
+//! nauticuvs = { version = "0.1", features = ["parallel"] }
 //! ```
 //!
 //! ## Precision
@@ -254,7 +254,7 @@ pub fn curvelet_forward_config(
 /// Given a [`CurveletCoeffs`] structure (possibly modified for denoising
 /// or fusion), reconstruct the 2D image.
 ///
-/// Reconstruction fidelity: relative L2 error < 1% for unmodified coefficients.
+/// Reconstruction fidelity: relative L2 error < 10⁻⁶ for unmodified coefficients.
 pub fn curvelet_inverse(coeffs: &CurveletCoeffs) -> Result<Array2<f32>, CurveletError> {
     inverse::inverse_transform(coeffs)
 }

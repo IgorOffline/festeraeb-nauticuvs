@@ -1,6 +1,6 @@
 [package]
 name = "nauticuvs"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Thom Hadfield -- NautiDog Sailing"]
 description = "Fast Discrete Curvelet Transform (FDCT) via wrapping for 2D images"
@@ -28,10 +28,6 @@ rand = "0.8"
 [features]
 default = []
 parallel = ["rayon"]
-
-[[bench]]
-name = "transform"
-harness = false
 
 [profile.release]
 opt-level = 3

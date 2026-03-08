@@ -24,11 +24,11 @@ use crate::utils;
 use crate::windows;
 
 /// Compute a single subband's frequency-domain contribution:
-/// FFT(coefficients) × window / sqrt(POU).
+/// FFT(coefficients) × window × (1/sqrt(POU)).
 fn subband_contribution(
     coeffs: &Array2<Complex<f64>>,
     w_arr: &Array2<f64>,
-    pou: &Array2<f64>,
+    inv_sqrt_pou: &Array2<f64>,
     n: usize,
 ) -> Array2<Complex<f64>> {
     let mut freq = coeffs.clone();
@@ -36,7 +36,7 @@ fn subband_contribution(
     let mut contrib = Array2::zeros((n, n));
     for i in 0..n {
         for j in 0..n {
-            let w = w_arr[[i, j]] / pou[[i, j]].sqrt();
+            let w = w_arr[[i, j]] * inv_sqrt_pou[[i, j]];
             contrib[[i, j]] = freq[[i, j]] * w;
         }
     }
@@ -80,19 +80,20 @@ pub fn inverse_transform(coeffs: &CurveletCoeffs) -> Result<Array2<f32>, Curvele
     for d in 0..num_detail {
         let scale_idx = d + 1;
         let num_dirs = cfg.directions_at_detail_scale(d);
+        let rad_w = windows::build_radial_window(&radial, scale_idx, num_scales);
 
         #[cfg(feature = "parallel")]
         let dirs_windows: Vec<Array2<f64>> = (0..num_dirs)
             .into_par_iter()
             .map(|l| {
-                windows::build_combined_window(&radial, &theta, scale_idx, l, num_dirs, num_scales)
+                windows::build_combined_window(&rad_w, &theta, l, num_dirs)
             })
             .collect();
 
         #[cfg(not(feature = "parallel"))]
         let dirs_windows: Vec<Array2<f64>> = (0..num_dirs)
             .map(|l| {
-                windows::build_combined_window(&radial, &theta, scale_idx, l, num_dirs, num_scales)
+                windows::build_combined_window(&rad_w, &theta, l, num_dirs)
             })
             .collect();
 
@@ -114,8 +115,10 @@ pub fn inverse_transform(coeffs: &CurveletCoeffs) -> Result<Array2<f32>, Curvele
         }
     }
 
+    let inv_sqrt_pou = pou.mapv(|v| 1.0 / v.sqrt());
+
     // Accumulate reconstructed spectrum
-    let mut f_hat = subband_contribution(&coeffs.coarse, &coarse_window, &pou, n);
+    let mut f_hat = subband_contribution(&coeffs.coarse, &coarse_window, &inv_sqrt_pou, n);
 
     // Detail contributions (parallel over directions, then sum)
     for (scale_windows, scale_coeffs) in detail_windows.iter().zip(coeffs.detail.iter()) {
@@ -124,7 +127,7 @@ pub fn inverse_transform(coeffs: &CurveletCoeffs) -> Result<Array2<f32>, Curvele
             let contributions: Vec<Array2<Complex<f64>>> = scale_windows
                 .par_iter()
                 .zip(scale_coeffs.par_iter())
-                .map(|(w_arr, dir_coeffs)| subband_contribution(dir_coeffs, w_arr, &pou, n))
+                .map(|(w_arr, dir_coeffs)| subband_contribution(dir_coeffs, w_arr, &inv_sqrt_pou, n))
                 .collect();
             for contrib in contributions {
                 for i in 0..n {
@@ -138,7 +141,7 @@ pub fn inverse_transform(coeffs: &CurveletCoeffs) -> Result<Array2<f32>, Curvele
         #[cfg(not(feature = "parallel"))]
         {
             for (w_arr, dir_coeffs) in scale_windows.iter().zip(scale_coeffs.iter()) {
-                let contrib = subband_contribution(dir_coeffs, w_arr, &pou, n);
+                let contrib = subband_contribution(dir_coeffs, w_arr, &inv_sqrt_pou, n);
                 for i in 0..n {
                     for j in 0..n {
                         f_hat[[i, j]] += contrib[[i, j]];
@@ -149,7 +152,7 @@ pub fn inverse_transform(coeffs: &CurveletCoeffs) -> Result<Array2<f32>, Curvele
     }
 
     // Fine contribution
-    let fine_contrib = subband_contribution(&coeffs.fine, &fine_window, &pou, n);
+    let fine_contrib = subband_contribution(&coeffs.fine, &fine_window, &inv_sqrt_pou, n);
     for i in 0..n {
         for j in 0..n {
             f_hat[[i, j]] += fine_contrib[[i, j]];

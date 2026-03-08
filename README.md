@@ -22,7 +22,7 @@ This makes them dramatically more efficient than wavelets for representing:
 
 ```rust
 use ndarray::Array2;
-use curvelet::{curvelet_forward, curvelet_inverse};
+use nauticuvs::{curvelet_forward, curvelet_inverse};
 
 // Grayscale image as a 2D f32 array
 let image = Array2::<f32>::zeros((512, 512));
@@ -53,7 +53,7 @@ across curvelet coefficients, while edges concentrate energy in a few large
 coefficients:
 
 ```rust
-let mut coeffs = curvelet_forward(&noisy_image, 5).unwrap();
+let mut coeffs = nauticuvs::curvelet_forward(&noisy_image, 5).unwrap();
 
 // Hard thresholding — zero out small detail coefficients
 coeffs.hard_threshold(0.1);
@@ -75,8 +75,8 @@ and fine (high-frequency) scales are preserved.
 Combine two images by selecting the strongest curvelet coefficient at each position:
 
 ```rust
-let coeffs_a = curvelet_forward(&image_a, 5).unwrap();
-let mut fused = curvelet_forward(&image_b, 5).unwrap();
+let coeffs_a = nauticuvs::curvelet_forward(&image_a, 5).unwrap();
+let mut fused = nauticuvs::curvelet_forward(&image_b, 5).unwrap();
 
 // Max-abs fusion: keep the stronger coefficient at each position
 for (s, scale_a) in coeffs_a.detail.iter().enumerate() {
@@ -97,7 +97,7 @@ let fused_image = curvelet_inverse(&fused).unwrap();
 Control the number of angular directions per scale:
 
 ```rust
-use curvelet::{curvelet_forward_config, CurveletConfig};
+use nauticuvs::{curvelet_forward_config, CurveletConfig};
 
 // 64 directions at finest detail scale (default is 32)
 let config = CurveletConfig::new(5).unwrap()
@@ -121,9 +121,9 @@ Direction counts must be ≥ 4 and multiples of 4.
 The API operates on single-channel `Array2<f32>`. For RGB, transform each channel independently:
 
 ```rust
-let mut coeffs_r = curvelet_forward(&red, 4).unwrap();
-let mut coeffs_g = curvelet_forward(&green, 4).unwrap();
-let mut coeffs_b = curvelet_forward(&blue, 4).unwrap();
+let mut coeffs_r = nauticuvs::curvelet_forward(&red, 4).unwrap();
+let mut coeffs_g = nauticuvs::curvelet_forward(&green, 4).unwrap();
+let mut coeffs_b = nauticuvs::curvelet_forward(&blue, 4).unwrap();
 
 // Denoise each channel
 coeffs_r.hard_threshold(0.05);
@@ -154,7 +154,7 @@ For `num_scales = 5`, the coefficient hierarchy is:
 Each subband is an `Array2<Complex<f64>>`. Accessing individual subbands:
 
 ```rust
-let coeffs = curvelet_forward(&image, 5).unwrap();
+let coeffs = nauticuvs::curvelet_forward(&image, 5).unwrap();
 
 // Coarse (low-frequency) subband
 let coarse = &coeffs.coarse;
@@ -180,7 +180,7 @@ Enable the `parallel` feature to process directional subbands concurrently via r
 
 ```toml
 [dependencies]
-curvelet = { version = "0.1", features = ["parallel"] }
+nauticuvs = { version = "0.1", features = ["parallel"] }
 ```
 
 This parallelizes:
@@ -225,7 +225,7 @@ This crate is a core component of the [CESARops](https://cesarops.com/) (Civilia
 -   **Community Driven:** We believe in open-source, privacy-first software built by the SAR community, for the SAR community.
 -   **Sustainable Development:** To fund further development, we may offer this software under a commercial license to the public or for-profit entities. The revenue generated will support the maintenance and enhancement of the free tools available to SAR teams.
 
-This `curvelet` crate provides the signal processing foundation for advanced sonar and image analysis, which is critical for features like drift prediction and object detection in challenging environments.
+This `nauticuvs` crate provides the signal processing foundation for advanced sonar and image analysis, which is critical for features like drift prediction and object detection in challenging environments.
 
 ## Contributing
 
